@@ -1,5 +1,6 @@
 # NinjaDev — Flutter CLI
 
+[![pub package](https://img.shields.io/pub/v/ninjadev.svg)](https://pub.dev/packages/ninjadev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Dart](https://img.shields.io/badge/Dart-3.2%2B-blue)](https://dart.dev)
 [![Flutter](https://img.shields.io/badge/Flutter-3.29%2B-blue)](https://flutter.dev)
@@ -13,6 +14,12 @@
 - [GitHub CLI](https://cli.github.com/) — only for the GitHub options; NinjaDev offers to install it (Homebrew on macOS/Linux, winget on Windows) when it's missing
 
 ## Install
+
+```bash
+dart pub global activate ninjadev
+```
+
+Or straight from GitHub, to get the very latest code:
 
 ```bash
 dart pub global activate --source git https://github.com/Mdamanatansari7/flutter_cli.git
