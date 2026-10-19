@@ -1,0 +1,26 @@
+name: ninjadev
+version: 1.1.0
+description: NinjaDev - Production-grade Flutter Developer Productivity CLI. Create complete production-ready Flutter applications with interactive wizards.
+homepage: https://github.com/Mdamanatansari7/flutter_cli
+repository: https://github.com/Mdamanatansari7/flutter_cli
+issue_tracker: https://github.com/Mdamanatansari7/flutter_cli/issues
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+executables:
+  ninjadev:
+
+dependencies:
+  args: ^2.4.2
+  interact: ^2.1.0
+  dart_console: ^1.2.0
+  mason_logger: ^0.3.0
+  yaml_edit: ^2.2.1
+  path: ^1.9.0
+  http: ^1.2.0
+  yaml: ^3.1.2
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.25.0

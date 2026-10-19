@@ -1,0 +1,13 @@
+# Dart / pub
+.dart_tool/
+.packages
+build/
+doc/api/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# macOS
+.DS_Store
