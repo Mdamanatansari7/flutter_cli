@@ -16,7 +16,7 @@ class NinjaUI {
   NinjaUI._();
 
   /// Single source of truth for the CLI version string.
-  static const String version = '1.1.0';
+  static const String version = '1.2.0';
 
   static const List<String> _logo = [
     '███╗   ██╗██╗███╗   ██╗     ██╗ █████╗ ██████╗ ███████╗██╗   ██╗',
@@ -995,6 +995,48 @@ class NinjaUI {
       render: (i, active) => _optionLine(labels[i], active),
     );
     return values[index];
+  }
+
+  /// Where a project that isn't on GitHub yet goes: 'original' — a new repo
+  /// on the logged-in account — or 'office' — an existing repo the office
+  /// already made, by its link.
+  static String githubDestinationMenu() {
+    const entries = [
+      ['original', 'Original GitHub (new repo on my account)'],
+      ['office', 'Office work (paste the repo link)'],
+    ];
+    final index = TerminalMenu.select(
+      prompt: '${_g('?')} ${_bold('Where should this project go on GitHub?')}',
+      optionCount: entries.length,
+      render: (i, active) => _optionLine(_fit(entries[i][1]), active),
+    );
+    return entries[index][0];
+  }
+
+  /// Asks for the link of an existing repo to push to, e.g. one the office
+  /// created in its GitHub organization. Takes the browser link or the
+  /// clone link (HTTPS or SSH) and returns it ready for `git remote add`,
+  /// or null when the input ends. Read as a plain terminal line on purpose:
+  /// the Input widget only takes what fits on the prompt's own line, which
+  /// cuts a link off in an 80-column terminal.
+  static String? askOfficeRepoLink() {
+    final linkPattern = RegExp(
+        r'^(https://[\w.-]+/[\w.-]+/[\w.-]+|git@[\w.-]+:[\w.-]+/[\w.-]+)/?');
+    stdout.writeln(
+        '  ${_dim('Paste the repo link, e.g. https://github.com/company/project')}');
+    while (true) {
+      stdout.write('${_g('?')} ${_bold('Repository link')} ${_dim('›')} ');
+      final line = stdin.readLineSync();
+      if (line == null) return null;
+      final value = line.trim();
+      if (linkPattern.matchAsPrefix(value)?.end == value.length) {
+        final link = value.endsWith('/')
+            ? value.substring(0, value.length - 1)
+            : value;
+        return link.endsWith('.git') ? link : '$link.git';
+      }
+      stdout.writeln('  ${red.wrap('✘')} ${_dim("That isn't a repo link — it should look like https://github.com/company/project")}');
+    }
   }
 
   /// Asks for the new GitHub repository's name, pre-filled with the

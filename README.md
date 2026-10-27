@@ -73,7 +73,7 @@ ninjadev create my_app --org com.example --platform ios,android --orientation la
 | Ready-made pages | Copies your own `.dart` pages from `~/.ninjadev/snippets/` into the project, adds the packages they import, and the iOS/Android permissions those packages need. |
 | Custom settings page | A TESTING / LIVE mode page. **Online** setup, or **Local** setup with the backend IP and port plus server discovery on the local network ([Bonsoir](https://pub.dev/packages/bonsoir)), in portrait or landscape. `main.dart` is wired to the setup you pick. |
 | Device orientation | Changes the orientation lock (and the ScreenUtil design size) in `main.dart`. |
-| Push to GitHub | The first push creates the GitHub repository under your account; later pushes bump the version in `pubspec.yaml`, commit and push. |
+| Push to GitHub | The first push asks where the project goes: **Original GitHub** creates a new repository under your account, **Office work** pushes to an existing repository — paste its link (for example your company's). Later pushes bump the version in `pubspec.yaml`, commit and push. |
 | GitHub account | Log in with your own GitHub account, switch to another one, or log out. |
 | Create .env file | Adds a starter `.env` file. |
 

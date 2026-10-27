@@ -1203,12 +1203,14 @@ class NinjaDevCLI {
   }
 
   /// Pushes the project to GitHub. The first time — no `origin` remote
-  /// yet — its GitHub repo is created under whichever account is logged
-  /// in (installing the GitHub CLI / logging in right here if needed) and
-  /// everything goes up as the initial commit. Every push after that
-  /// bumps the version: pubspec.yaml's major number and build number are
-  /// each incremented by 1 (e.g. 1.0.0+1 -> 2.0.0+2), then everything is
-  /// staged, committed and pushed to the current branch's remote.
+  /// yet — the user picks where it goes: Original GitHub creates its repo
+  /// under whichever account is logged in (installing the GitHub CLI /
+  /// logging in right here if needed), Office work pushes to an existing
+  /// repo by its link; either way everything goes up as the initial
+  /// commit. Every push after that bumps the version: pubspec.yaml's major
+  /// number and build number are each incremented by 1 (e.g. 1.0.0+1 ->
+  /// 2.0.0+2), then everything is staged, committed and pushed to the
+  /// current branch's remote.
   Future<void> _runGitPushWizard() async {
     final gitService = GitService(_logger);
     if (!await gitService.isGitInstalled()) {
@@ -1217,7 +1219,12 @@ class NinjaDevCLI {
     }
     if (!await gitService.isRepo(Directory.current.path) ||
         await _originUrl() == null) {
-      await _createRepoAndPush(gitService);
+      _logger.info('This project isn\'t on GitHub yet.');
+      if (NinjaUI.githubDestinationMenu() == 'office') {
+        await _pushToOfficeRepo(gitService);
+      } else {
+        await _createRepoAndPush(gitService);
+      }
       return;
     }
     final pubspecFile = File('pubspec.yaml');
@@ -1277,14 +1284,46 @@ class NinjaDevCLI {
     return result.exitCode == 0 && url.isNotEmpty ? url : null;
   }
 
+  /// First push to a repo that already exists — e.g. one the office made
+  /// in its GitHub organization: asks for its link, commits everything and
+  /// pushes there; nothing gets created on GitHub. A failed push (no access
+  /// yet, or the repo isn't empty) takes the link off again, so the next
+  /// push starts over from the Office work / Original GitHub choice.
+  Future<void> _pushToOfficeRepo(GitService gitService) async {
+    final projectPath = Directory.current.path;
+    final link = NinjaUI.askOfficeRepoLink();
+    if (link == null || !NinjaUI.yesNoMenu('Push this project to $link?')) {
+      _logger.warn('Cancelled');
+      return;
+    }
+
+    if (!await gitService.isRepo(projectPath)) {
+      await gitService.init(projectPath);
+    }
+    await gitService.stageAndCommit(projectPath, message: 'Initial commit');
+    // Same default branch name GitHub gives new repos.
+    final branch = await Process.run('git', ['rev-parse', '--abbrev-ref', 'HEAD'],
+        runInShell: true, workingDirectory: projectPath);
+    if (branch.stdout.toString().trim() == 'master') {
+      await Process.run('git', ['branch', '-M', 'main'],
+          runInShell: true, workingDirectory: projectPath);
+    }
+    await gitService.setupRemote(projectPath, link);
+    if (await gitService.push(projectPath)) return;
+
+    await Process.run('git', ['remote', 'remove', 'origin'],
+        runInShell: true, workingDirectory: projectPath);
+    _logger.info(
+        'Make sure your GitHub account can push to this repo (switch it under '
+        '"GitHub account") and that the repo is still empty, then push again.');
+  }
+
   /// First push of a project that isn't on GitHub yet: creates its repo
   /// under the logged-in account (named after the project folder unless
   /// changed), commits everything and pushes it. A missing GitHub CLI
   /// gets installed and a missing login done right here, so the push
   /// carries on in one go.
   Future<void> _createRepoAndPush(GitService gitService) async {
-    _logger.info(
-        'This project isn\'t on GitHub yet — its repository gets created first.');
     if (!await _ensureGhInstalled()) return;
     final account = await _ensureGhLogin();
     if (account == null) return;

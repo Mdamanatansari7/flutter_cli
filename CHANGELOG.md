@@ -1,3 +1,8 @@
+## 1.2.0
+
+- Push to GitHub: the first push now asks where the project goes — **Original GitHub** (a new repository on your account, as before) or **Office work** (an existing repository, e.g. your company's: paste its link and the project is pushed there).
+- A failed first push to an office repository no longer leaves the project half-connected; the next push asks again.
+
 ## 1.1.0
 
 - First public release.
