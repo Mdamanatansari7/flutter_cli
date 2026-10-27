@@ -1309,7 +1309,8 @@ class NinjaDevCLI {
     }
     await gitService.stageAndCommit(projectPath, message: 'Initial commit');
     // Same default branch name GitHub gives new repos.
-    final branch = await Process.run('git', ['rev-parse', '--abbrev-ref', 'HEAD'],
+    final branch = await Process.run(
+        'git', ['rev-parse', '--abbrev-ref', 'HEAD'],
         runInShell: true, workingDirectory: projectPath);
     if (branch.stdout.toString().trim() == 'master') {
       await Process.run('git', ['branch', '-M', 'main'],
@@ -1440,7 +1441,9 @@ class NinjaDevCLI {
     final active = await _ghAccount();
     final office = accounts['office'];
     if (active != null &&
-        !(office != null && office.host == 'github.com' && office.user == active)) {
+        !(office != null &&
+            office.host == 'github.com' &&
+            office.user == active)) {
       final login = GithubLogin('github.com', active);
       GithubAccounts.save('original', login);
       accounts['original'] = login;
