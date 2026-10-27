@@ -1030,12 +1030,12 @@ class NinjaUI {
       if (line == null) return null;
       final value = line.trim();
       if (linkPattern.matchAsPrefix(value)?.end == value.length) {
-        final link = value.endsWith('/')
-            ? value.substring(0, value.length - 1)
-            : value;
+        final link =
+            value.endsWith('/') ? value.substring(0, value.length - 1) : value;
         return link.endsWith('.git') ? link : '$link.git';
       }
-      stdout.writeln('  ${red.wrap('✘')} ${_dim("That isn't a repo link — it should look like https://github.com/company/project")}');
+      stdout.writeln(
+          '  ${red.wrap('✘')} ${_dim("That isn't a repo link — it should look like https://github.com/company/project")}');
     }
   }
 
