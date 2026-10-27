@@ -20,6 +20,7 @@ import 'package:ninjadev/src/generators/websocket_generator.dart';
 import 'package:ninjadev/src/services/config_service.dart';
 import 'package:ninjadev/src/services/generate_service.dart';
 import 'package:ninjadev/src/services/git_service.dart';
+import 'package:ninjadev/src/services/github_accounts.dart';
 import 'package:ninjadev/src/services/project_service.dart';
 import 'package:ninjadev/src/utils/ui.dart';
 
@@ -1296,6 +1297,12 @@ class NinjaDevCLI {
       _logger.warn('Cancelled');
       return;
     }
+    final office = GithubAccounts.load()['office'];
+    if (office != null &&
+        office.host == GithubAccounts.hostOf(link) &&
+        await _useGithubAccount(office)) {
+      _logger.info('Pushing with your office account ${office.label}');
+    }
 
     if (!await gitService.isRepo(projectPath)) {
       await gitService.init(projectPath);
@@ -1314,8 +1321,9 @@ class NinjaDevCLI {
     await Process.run('git', ['remote', 'remove', 'origin'],
         runInShell: true, workingDirectory: projectPath);
     _logger.info(
-        'Make sure your GitHub account can push to this repo (switch it under '
-        '"GitHub account") and that the repo is still empty, then push again.');
+        'Make sure your office GitHub account can push to this repo (set it up '
+        'under "GitHub account" → Office work) and that the repo is still '
+        'empty, then push again.');
   }
 
   /// First push of a project that isn't on GitHub yet: creates its repo
@@ -1325,7 +1333,7 @@ class NinjaDevCLI {
   /// carries on in one go.
   Future<void> _createRepoAndPush(GitService gitService) async {
     if (!await _ensureGhInstalled()) return;
-    final account = await _ensureGhLogin();
+    final account = await _originalGithubAccount();
     if (account == null) return;
 
     final folderName =
@@ -1407,68 +1415,130 @@ class NinjaDevCLI {
     }
   }
 
-  /// The GitHub account the CLI is logged in as. When nobody is logged in
-  /// on this machine yet, the user logs in with their own account right
-  /// here first.
-  Future<String?> _ensureGhLogin() async {
-    final account = await _ghAccount();
-    if (account != null) return account;
-
-    if (!NinjaUI.yesNoMenu('Not logged in to GitHub yet. Log in now?')) {
-      _logger
-          .info('Log in from "GitHub account" in this menu, then try again.');
+  /// The Original GitHub account, made the active one — so a new repo
+  /// lands on the user's own account, not the office one. Logs in right
+  /// here when it isn't set up yet.
+  Future<String?> _originalGithubAccount() async {
+    final original = (await _githubAccounts())['original'];
+    if (original != null && await _useGithubAccount(original)) {
+      return original.user;
+    }
+    if (!NinjaUI.yesNoMenu('Log in to your original GitHub account now?')) {
+      _logger.info(
+          'Log in from "GitHub account" → Original GitHub, then try again.');
       return null;
     }
-    return _ghLogin();
+    return (await _setUpGithubAccount('original'))?.user;
+  }
+
+  /// The saved Original / Office logins. A github.com login made before
+  /// these were kept apart (or outside NinjaDev) counts as Original
+  /// GitHub, as long as it isn't the office one.
+  Future<Map<String, GithubLogin>> _githubAccounts() async {
+    final accounts = GithubAccounts.load();
+    if (accounts['original'] != null) return accounts;
+    final active = await _ghAccount();
+    final office = accounts['office'];
+    if (active != null &&
+        !(office != null && office.host == 'github.com' && office.user == active)) {
+      final login = GithubLogin('github.com', active);
+      GithubAccounts.save('original', login);
+      accounts['original'] = login;
+    }
+    return accounts;
+  }
+
+  /// Logs in for [slot] — Office work first asks for the office GitHub
+  /// link, to know which GitHub to log in to — and remembers the account.
+  /// It's left as the active one.
+  Future<GithubLogin?> _setUpGithubAccount(String slot) async {
+    final host =
+        slot == 'office' ? NinjaUI.askOfficeGithubHost() : 'github.com';
+    if (host == null) return null;
+    final user = await _ghLogin(host: host);
+    if (user == null) return null;
+    final login = GithubLogin(host, user);
+    GithubAccounts.save(slot, login);
+    _logger.success(
+        '${slot == 'office' ? 'Office work' : 'Original GitHub'}: ${login.label}');
+    return login;
+  }
+
+  /// Makes [login] the active account on its GitHub, so pushes and new
+  /// repos go through it. False when it isn't logged in any more.
+  Future<bool> _useGithubAccount(GithubLogin login) async {
+    if (await _ghAccount(host: login.host) == login.user) return true;
+    await Process.run('gh',
+        ['auth', 'switch', '--hostname', login.host, '--user', login.user],
+        runInShell: true);
+    if (await _ghAccount(host: login.host) == login.user) return true;
+    _logger.err(
+        '${login.label} isn\'t logged in any more — log in again under "GitHub account".');
+    return false;
   }
 
   /// Runs the interactive `gh auth login` (browser + one-time code, HTTPS)
-  /// and points git at that login, so `git push` doesn't ask for its own
-  /// password. Returns the account now logged in, or null.
-  Future<String?> _ghLogin() async {
+  /// for [host] and points git at that login, so `git push` doesn't ask
+  /// for its own password. Returns the account now logged in, or null.
+  Future<String?> _ghLogin({String host = 'github.com'}) async {
     await _runAttached('gh', [
       'auth',
       'login',
       '--hostname',
-      'github.com',
+      host,
       '--git-protocol',
       'https',
       '--web',
     ]);
-    final account = await _ghAccount();
+    final account = await _ghAccount(host: host);
     if (account == null) {
       _logger.err('Not logged in to GitHub — try again from "GitHub account".');
       return null;
     }
-    await Process.run('gh', ['auth', 'setup-git'], runInShell: true);
+    await Process.run('gh', ['auth', 'setup-git', '--hostname', host],
+        runInShell: true);
     _logger.success('Logged in to GitHub as $account');
     return account;
   }
 
-  /// "GitHub account": each user logs in with their own GitHub account
-  /// here, adds and switches to another one, or logs out. Pushes create
-  /// repos under whichever account is active.
+  /// "GitHub account": asks first which login to manage — Original GitHub
+  /// (the user's own account) or Office work (their office account, on
+  /// github.com or the office's own GitHub server) — then logs in to it,
+  /// makes it the active one, or logs out. Pushes use the matching one.
   Future<void> _runGithubAccountMenu() async {
     if (!await _ensureGhInstalled()) return;
-    final account = await _ghAccount();
-    final action = NinjaUI.githubAccountMenu(account);
-    if (action == 'login') {
-      await _ghLogin();
-    } else if (action == 'logout' && account != null) {
-      await _runAttached('gh',
-          ['auth', 'logout', '--hostname', 'github.com', '--user', account]);
-      final nowActive = await _ghAccount();
-      if (nowActive == null) {
-        _logger.success('Logged out of GitHub');
-      } else {
-        _logger.info('Now using GitHub account $nowActive');
+    final accounts = await _githubAccounts();
+    final slot = NinjaUI.githubSlotMenu(
+      original: accounts['original']?.label,
+      office: accounts['office']?.label,
+    );
+    if (slot == 'back') return;
+    final login = accounts[slot];
+    if (login == null) {
+      await _setUpGithubAccount(slot);
+      return;
+    }
+
+    final title = slot == 'office' ? 'Office work' : 'Original GitHub';
+    final action = NinjaUI.githubSlotActionMenu(title, login.label);
+    if (action == 'use') {
+      if (await _useGithubAccount(login)) {
+        _logger.success('Now using ${login.label} ($title)');
       }
+    } else if (action == 'login') {
+      await _setUpGithubAccount(slot);
+    } else if (action == 'logout') {
+      await _runAttached('gh',
+          ['auth', 'logout', '--hostname', login.host, '--user', login.user]);
+      GithubAccounts.remove(slot);
+      _logger.success('Logged out of ${login.label} ($title)');
     }
   }
 
-  /// The logged-in GitHub username, or null when the CLI isn't logged in.
-  Future<String?> _ghAccount() async {
-    final result = await Process.run('gh', ['api', 'user', '--jq', '.login'],
+  /// The active GitHub username on [host], or null when not logged in.
+  Future<String?> _ghAccount({String host = 'github.com'}) async {
+    final result = await Process.run(
+        'gh', ['api', 'user', '--hostname', host, '--jq', '.login'],
         runInShell: true);
     final login = result.stdout.toString().trim();
     return result.exitCode == 0 && login.isNotEmpty ? login : null;

@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart'
     show darkGray, green, lightBlue, lightGreen, red, styleBold, white;
 import 'package:ninjadev/src/generators/http_function_generator.dart'
     show HeaderValue;
+import 'package:ninjadev/src/services/github_accounts.dart' show GithubAccounts;
 import 'package:ninjadev/src/utils/terminal_menu.dart';
 import 'package:ninjadev/src/validators/project_validator.dart';
 
@@ -1060,28 +1061,57 @@ class NinjaUI {
     return value.isEmpty ? defaultName : value;
   }
 
-  /// Shows who's logged in to GitHub on this machine (if anyone) and
-  /// returns what to do: 'login', 'logout' or 'back'.
-  static String githubAccountMenu(String? account) {
+  /// First question under "GitHub account": which login to manage, each
+  /// shown with its account (or "not set up"). Returns 'original',
+  /// 'office' or 'back'.
+  static String githubSlotMenu({String? original, String? office}) {
     stdout.writeln();
-    stdout.writeln(
-        '  ${_dim('GitHub account:')} ${account == null ? _dim('not logged in') : _gb(account)}');
-    final entries = account == null
-        ? const [
-            ['login', 'Log in'],
-            ['back', '←  Back'],
-          ]
-        : const [
-            ['login', 'Log in with another account'],
-            ['logout', 'Log out'],
-            ['back', '←  Back'],
-          ];
+    final entries = [
+      ['original', 'Original GitHub — ${original ?? 'not set up'}'],
+      ['office', 'Office work — ${office ?? 'not set up'}'],
+      ['back', '←  Back'],
+    ];
     final index = TerminalMenu.select(
-      prompt: '${_g('?')} ${_bold('GitHub account')}',
+      prompt: '${_g('?')} ${_bold('Which GitHub account?')}',
+      optionCount: entries.length,
+      render: (i, active) => _optionLine(_fit(entries[i][1]), active),
+    );
+    return entries[index][0];
+  }
+
+  /// What to do with a login that's set up: 'use', 'login', 'logout' or
+  /// 'back'.
+  static String githubSlotActionMenu(String title, String account) {
+    stdout.writeln('  ${_dim('$title:')} ${_gb(account)}');
+    const entries = [
+      ['use', 'Use this account now'],
+      ['login', 'Log in with a different account'],
+      ['logout', 'Log out'],
+      ['back', '←  Back'],
+    ];
+    final index = TerminalMenu.select(
+      prompt: '${_g('?')} ${_bold(title)}',
       optionCount: entries.length,
       render: (i, active) => _optionLine(entries[i][1], active),
     );
     return entries[index][0];
+  }
+
+  /// Asks for any link from the office GitHub — its organization page like
+  /// https://github.com/company, a repo, or the office's own GitHub server —
+  /// and returns the host to log in to, or null when the input ends.
+  static String? askOfficeGithubHost() {
+    stdout.writeln(
+        '  ${_dim('Paste your office GitHub link, e.g. https://github.com/company')}');
+    while (true) {
+      stdout.write('${_g('?')} ${_bold('Office GitHub link')} ${_dim('›')} ');
+      final line = stdin.readLineSync();
+      if (line == null) return null;
+      final host = GithubAccounts.hostOf(line.trim());
+      if (host != null) return host;
+      stdout.writeln(
+          '  ${red.wrap('✘')} ${_dim("That isn't a GitHub link — it should look like https://github.com/company")}');
+    }
   }
 
   /// Public vs private choice for a new GitHub repository.

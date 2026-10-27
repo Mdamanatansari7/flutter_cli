@@ -74,7 +74,7 @@ ninjadev create my_app --org com.example --platform ios,android --orientation la
 | Custom settings page | A TESTING / LIVE mode page. **Online** setup, or **Local** setup with the backend IP and port plus server discovery on the local network ([Bonsoir](https://pub.dev/packages/bonsoir)), in portrait or landscape. `main.dart` is wired to the setup you pick. |
 | Device orientation | Changes the orientation lock (and the ScreenUtil design size) in `main.dart`. |
 | Push to GitHub | The first push asks where the project goes: **Original GitHub** creates a new repository under your account, **Office work** pushes to an existing repository — paste its link (for example your company's). Later pushes bump the version in `pubspec.yaml`, commit and push. |
-| GitHub account | Log in with your own GitHub account, switch to another one, or log out. |
+| GitHub account | First asks which account: **Original GitHub** (your own) or **Office work** (your office account — paste your office GitHub link, e.g. `https://github.com/company`, or your company's own GitHub server). Log in to it, make it the active one, or log out. Pushes use the matching account. |
 | Create .env file | Adds a starter `.env` file. |
 
 ## Commands
