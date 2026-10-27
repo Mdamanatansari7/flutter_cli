@@ -17,7 +17,7 @@ class NinjaUI {
   NinjaUI._();
 
   /// Single source of truth for the CLI version string.
-  static const String version = '1.2.0';
+  static const String version = '1.3.0';
 
   static const List<String> _logo = [
     '███╗   ██╗██╗███╗   ██╗     ██╗ █████╗ ██████╗ ███████╗██╗   ██╗',

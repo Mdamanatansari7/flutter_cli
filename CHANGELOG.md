@@ -1,3 +1,8 @@
+## 1.3.0
+
+- GitHub account: first asks which account to manage — **Original GitHub** (your own) or **Office work** (your office account; paste your office GitHub link, e.g. `https://github.com/company`, or your company's own GitHub server). Log in, make it the active account, or log out.
+- NinjaDev remembers which login is yours and which is the office one, so pushes use the right account: Original GitHub creates new repos on your own account, Office work pushes with your office account.
+
 ## 1.2.0
 
 - Push to GitHub: the first push now asks where the project goes — **Original GitHub** (a new repository on your account, as before) or **Office work** (an existing repository, e.g. your company's: paste its link and the project is pushed there).
